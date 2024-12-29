@@ -14,6 +14,8 @@ class Ghostty < Formula
 
   depends_on "zig" => :build
   depends_on "pkg-config" => :build
+  depends_on "gtk4"
+  depends_on "libadwaita"
 
   def install
     system "zig", "build", "-Doptimize=ReleaseFast"
