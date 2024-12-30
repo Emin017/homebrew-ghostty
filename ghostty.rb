@@ -16,13 +16,36 @@ class Ghostty < Formula
   depends_on "pkg-config" => :build
   depends_on "gtk4"
   depends_on "libadwaita"
+  depends_on :xcode => :build if OS.mac?
 
   def install
-    system "zig", "build", "-Doptimize=ReleaseFast"
-    bin.install "zig-out/bin/ghostty"
+    args = %W[
+      -Doptimize=ReleaseFast
+    ]
+    if OS.mac?
+      unless File.exist?("/Applications/Xcode.app")
+        odie "Xcode is required but not installed in /Applications/Xcode.app"
+      end
+
+      system "zig", "build", *args
+
+      cd "macos" do
+        system "xcodebuild",
+      end
+
+      prefix.install "macos/build/ReleaseLocal/Ghostty.app"
+      Applications.install_symlink prefix/"Ghostty.app"
+    else
+      system "zig", "build", *args
+      bin.install "zig-out/bin/ghostty"
+    end
   end
 
   test do
-    assert_match "Ghostty", shell_output("#{bin}/ghostty --version")
+    if OS.mac?
+      assert_predicate prefix/"Ghostty.app", :exist?
+    else
+      assert_match "Ghostty", shell_output("#{bin}/ghostty --version")
+    end
   end
 end
