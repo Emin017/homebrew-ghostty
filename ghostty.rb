@@ -5,21 +5,14 @@ class Ghostty < Formula
   license "MIT"
   head "https://github.com/ghostty-org/ghostty.git", branch: "main"
 
-  def caveats
-    <<~EOS
-      This is a head-only formula as Ghostty is currently under active development.
-      No stable release is available yet.
-    EOS
-  end
-
-  depends_on "zig" => :build
   depends_on "pkg-config" => :build
+  depends_on xcode: :build if OS.mac?
+  depends_on "zig" => :build
   depends_on "gtk4"
   depends_on "libadwaita"
-  depends_on :xcode => :build if OS.mac?
 
   def install
-    args = %W[
+    args = %w[
       -Doptimize=ReleaseFast
     ]
     if OS.mac?
@@ -30,15 +23,28 @@ class Ghostty < Formula
       system "zig", "build", *args
 
       cd "macos" do
-        system "xcodebuild",
+        # Disable sandboxing when building the app
+        # see: https://github.com/orgs/Homebrew/discussions/59
+        xcodebuild "-arch", Hardware::CPU.arch,
+          "OTHER_SWIFT_FLAGS='-disable-sandbox'",
+          "-IDEPackageSupportDisableManifestSandbox=1",
+          "-IDEPackageSupportDisablePluginExecutionSandbox=1",
+          "SYMROOT=#{buildpath}/macos/build"
       end
 
-      prefix.install "macos/build/ReleaseLocal/Ghostty.app"
-      Applications.install_symlink prefix/"Ghostty.app"
+      app_path = "#{buildpath}/macos/build/ReleaseLocal/Ghostty.app"
+      prefix.install app_path
     else
       system "zig", "build", *args
       bin.install "zig-out/bin/ghostty"
     end
+  end
+
+  def caveats
+    <<~EOS
+      This is a head-only formula as Ghostty is currently under active development.
+      No stable release is available yet.
+    EOS
   end
 
   test do
